@@ -1,26 +1,34 @@
-function Header(){ 
-    return(
-        <header className="app-header">
-           <div className="brand">
-            <span className="brand-mark">*</span>
-            <span>Gatherboard</span>
-           </div>
+type HeaderProps = {
+  onGoHome: () => void;
+};
 
-           <div className="board-info">
-            <span className="board-title">Untitled Board</span>
-            <span className="save-status">All changes saved</span>
-           </div>
+function Header({ onGoHome }: HeaderProps) {
+  return (
+    <header className="app-header">
+      <div className="brand">
+        <span className="brand-mark">*</span>
+        <span>Gatherboard</span>
+      </div>
 
-        <div className="header-actions">
-           <div className="collaborators">
+      <div className="board-info">
+        <span className="board-title">Untitled Board</span>
+        <span className="save-status">All changes saved</span>
+      </div>
+
+      <div className="header-actions">
+        <div className="collaborators">
           <span className="avatar">A</span>
           <span className="avatar">S</span>
         </div>
- 
-         <button className="share-button">Share</button>
-      </div>
 
-        </header>
-    );
+        <button className="home-button" onClick={onGoHome}>
+          {" "}
+          ← Home{" "}
+        </button>
+
+        <button className="share-button">Share</button>
+      </div>
+    </header>
+  );
 }
-export default Header;//reusable
+export default Header; //reusable
