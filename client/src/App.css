@@ -208,3 +208,55 @@
 .home-button:hover {
   background: #eeeae2;
 }
+
+.canvas-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-button,
+.clear-button {
+  padding: 8px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.action-button {
+  background-color: #ffffff;
+  color: #334155;
+}
+
+.action-button:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.clear-button {
+  background-color: #fff1f2;
+  color: #be123c;
+  border-color: #fecdd3;
+}
+
+.clear-button:hover {
+  background-color: #ffe4e6;
+  border-color: #fda4af;
+}
+
+.action-button:active,
+.clear-button:active {
+  transform: scale(0.97);
+}
+
+.action-button:focus-visible,
+.clear-button:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}

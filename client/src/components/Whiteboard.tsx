@@ -6,6 +6,8 @@ function Whiteboard() {
   const [color, setColor] = useState("#000000");
   const [brushSize, setBrushSize] = useState(3);
   const [isEraser, setIsEraser] = useState(false);
+  const [history, setHistory] = useState<ImageData[]>([]);
+  const [redoHistory, setRedoHistory] = useState<ImageData[]>([]);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -41,6 +43,10 @@ function Whiteboard() {
 
     context.moveTo(x, y);
 
+    //save snapshot
+    const snapshot = context.getImageData(0, 0, canvas.width, canvas.height);
+    setHistory((previousHistory) => [...previousHistory, snapshot]);
+
     setIsDrawing(true);
   }
 
@@ -64,6 +70,77 @@ function Whiteboard() {
     setIsDrawing(false);
   }
 
+  function clearCanvas() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.clearRect(0, 0, 800, 500);
+  }
+
+  function undo() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    if (history.length === 0) return;
+
+    // Save the current canvas for Redo
+    const currentSnapshot = context.getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+
+    setRedoHistory((previousRedoHistory) => [
+      ...previousRedoHistory,
+      currentSnapshot,
+    ]);
+
+    // Retrieve the previous canvas state
+    const previousHistory = [...history];
+    const previousSnapshot = previousHistory.pop();
+
+    if (!previousSnapshot) return;
+
+    context.putImageData(previousSnapshot, 0, 0);
+
+    setHistory(previousHistory);
+  }
+
+  function redo() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    if (redoHistory.length === 0) return;
+
+    // Save the current canvas for Undo
+    const currentSnapshot = context.getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+
+    setHistory((previousHistory) => [...previousHistory, currentSnapshot]);
+
+    // Retrieve the next canvas state
+    const updatedRedoHistory = [...redoHistory];
+    const nextSnapshot = updatedRedoHistory.pop();
+
+    if (!nextSnapshot) return;
+
+    context.putImageData(nextSnapshot, 0, 0);
+
+    setRedoHistory(updatedRedoHistory);
+  }
+
   return (
     <main className="whiteboard-page">
       {" "}
@@ -77,10 +154,7 @@ function Whiteboard() {
           </h1>{" "}
           <p className="subtitle">A little space for your ideas.</p>{" "}
         </div>{" "}
-        <div className="board-status">
-          {" "}
-          <span className="status-dot" /> Ready to create{" "}
-        </div>{" "}
+        <div className="board-status"> </div>{" "}
       </header>{" "}
       <section className="board-workspace">
         {" "}
@@ -155,9 +229,27 @@ function Whiteboard() {
         <div className="canvas-frame">
           {" "}
           <div className="canvas-topline">
-            {" "}
-            <span>UNTITLED BOARD</span> <span>800 × 500</span>{" "}
-          </div>{" "}
+            <span>UNTITLED BOARD</span>
+            <span>800 × 500</span>
+
+            <div className="canvas-actions">
+              <button className="action-button" onClick={undo} type="button">
+                ↶ Undo
+              </button>
+
+              <button className="action-button" onClick={redo} type="button">
+                ↷ Redo
+              </button>
+
+              <button
+                className="clear-button"
+                onClick={clearCanvas}
+                type="button"
+              >
+                Clear Canvas
+              </button>
+            </div>
+          </div>
           <canvas
             width={800}
             height={500}
