@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import "./Whiteboard.css";
 
 function Whiteboard() {
@@ -43,6 +43,7 @@ function Whiteboard() {
 
     context.moveTo(x, y);
 
+    setRedoHistory([]);
     //save snapshot
     const snapshot = context.getImageData(0, 0, canvas.width, canvas.height);
     setHistory((previousHistory) => [...previousHistory, snapshot]);
@@ -75,7 +76,13 @@ function Whiteboard() {
     if (!canvas) return;
     const context = canvas.getContext("2d");
     if (!context) return;
-    context.clearRect(0, 0, 800, 500);
+    const snapshot = context.getImageData(0, 0, canvas.width, canvas.height);
+
+    setHistory((previousHistory) => [...previousHistory, snapshot]);
+    setRedoHistory([]);
+
+    // Clear the canvas
+    context.clearRect(0, 0, canvas.width, canvas.height);
   }
 
   function undo() {
@@ -110,6 +117,22 @@ function Whiteboard() {
 
     setHistory(previousHistory);
   }
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.ctrlKey && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        undo();
+      } else if (event.ctrlKey && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redo();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [undo]);
 
   function redo() {
     const canvas = canvasRef.current;
