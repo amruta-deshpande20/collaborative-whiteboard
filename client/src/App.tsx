@@ -6,13 +6,27 @@ import Home from "./pages/Home";
 import "./App.css";
 
 function App() {
-  const [showWhiteboard, setShowWhiteboard] = useState(false);
+  const [showWhiteboard, setShowWhiteboard] = useState(
+    () => sessionStorage.getItem("gatherboard-page") === "board",
+  );
   if (!showWhiteboard) {
-    return <Home onStartCreating={() => setShowWhiteboard(true)} />;
+    return (
+      <Home
+        onStartCreating={() => {
+          sessionStorage.setItem("gatherboard-page", "board");
+          setShowWhiteboard(true);
+        }}
+      />
+    );
   }
   return (
     <div className="app">
-      <Header onGoHome={() => setShowWhiteboard(false)} />
+      <Header
+        onGoHome={() => {
+          sessionStorage.removeItem("gatherboard-page");
+          setShowWhiteboard(false);
+        }}
+      />
       {/* <Toolbar /> */}
       <Whiteboard />
     </div>
