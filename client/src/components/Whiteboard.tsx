@@ -69,6 +69,12 @@ function Whiteboard() {
 
   function stopDrawing() {
     setIsDrawing(false);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const imageData = canvas.toDataURL("image/png");
+
+    localStorage.setItem("gatherboard-drawing", imageData);
   }
 
   function clearCanvas() {
@@ -83,6 +89,8 @@ function Whiteboard() {
 
     // Clear the canvas
     context.clearRect(0, 0, canvas.width, canvas.height);
+
+    localStorage.setItem("gatherboard-drawing", canvas.toDataURL("image/png"));
   }
 
   function undo() {
@@ -114,9 +122,29 @@ function Whiteboard() {
     if (!previousSnapshot) return;
 
     context.putImageData(previousSnapshot, 0, 0);
+    localStorage.setItem("gatherboard-drawing", canvas.toDataURL("image/png"));
 
     setHistory(previousHistory);
   }
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const savedDrawing = localStorage.getItem("gatherboard-drawing");
+    if (!savedDrawing) return;
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    const image = new Image();
+
+    image.onload = () => {
+      context.drawImage(image, 0, 0);
+    };
+
+    image.src = savedDrawing;
+  }, []);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -160,6 +188,7 @@ function Whiteboard() {
     if (!nextSnapshot) return;
 
     context.putImageData(nextSnapshot, 0, 0);
+    localStorage.setItem("gatherboard-drawing", canvas.toDataURL("image/png"));
 
     setRedoHistory(updatedRedoHistory);
   }
