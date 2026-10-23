@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import { socket } from "../socket";
 import "./Whiteboard.css";
 
 function Whiteboard() {
@@ -10,6 +11,7 @@ function Whiteboard() {
   const [redoHistory, setRedoHistory] = useState<ImageData[]>([]);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isDrawingRef = useRef(false);
 
   function getCanvasCoordinates(event: React.MouseEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current!;
@@ -23,6 +25,7 @@ function Whiteboard() {
   }
 
   function startDrawing(event: React.MouseEvent<HTMLCanvasElement>) {
+    console.log("Mouse down detected");
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -43,16 +46,31 @@ function Whiteboard() {
 
     context.moveTo(x, y);
 
+    socket.emit("drawing-start", {
+      x,
+      y,
+      color,
+      brushSize,
+      isEraser,
+    });
+
     setRedoHistory([]);
     //save snapshot
     const snapshot = context.getImageData(0, 0, canvas.width, canvas.height);
     setHistory((previousHistory) => [...previousHistory, snapshot]);
 
+    isDrawingRef.current = true;
     setIsDrawing(true);
+    console.log("Ref after starting:", isDrawingRef.current);
   }
 
   function draw(event: React.MouseEvent<HTMLCanvasElement>) {
-    if (!isDrawing) return;
+    console.log("Ref value:", isDrawingRef.current);
+
+    if (!isDrawingRef.current) {
+      console.log("Drawing stopped: ref is false");
+      return;
+    }
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -65,15 +83,139 @@ function Whiteboard() {
     context.lineTo(x, y);
 
     context.stroke();
+    socket.emit("drawing", {
+      x,
+      y,
+      color,
+      brushSize,
+      isEraser,
+    });
   }
 
-  function stopDrawing() {
+  function handleRemoteUndo() {
+    const canvas = canvasRef.current;
+    if (!canvas || history.length === 0) return;
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    const currentSnapshot = context.getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+
+    setRedoHistory((previous) => [...previous, currentSnapshot]);
+
+    const updatedHistory = [...history];
+    const previousSnapshot = updatedHistory.pop();
+    if (!previousSnapshot) return;
+
+    context.putImageData(previousSnapshot, 0, 0);
+    setHistory(updatedHistory);
+  }
+
+  function handleRemoteRedo() {
+    const canvas = canvasRef.current;
+    if (!canvas || redoHistory.length === 0) return;
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    const currentSnapshot = context.getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+
+    setHistory((previous) => [...previous, currentSnapshot]);
+
+    const updatedRedoHistory = [...redoHistory];
+    const nextSnapshot = updatedRedoHistory.pop();
+    if (!nextSnapshot) return;
+
+    context.putImageData(nextSnapshot, 0, 0);
+    setRedoHistory(updatedRedoHistory);
+  }
+
+  useEffect(() => {
+    function handleRemoteDrawing(data: {
+      x: number;
+      y: number;
+      color: string;
+      brushSize: number;
+      isEraser: boolean;
+    }) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const context = canvas.getContext("2d");
+      if (!context) return;
+
+      context.globalCompositeOperation = data.isEraser
+        ? "destination-out"
+        : "source-over";
+
+      context.strokeStyle = data.color;
+      context.lineWidth = data.isEraser ? 20 : data.brushSize;
+      context.lineCap = "round";
+      context.lineJoin = "round";
+
+      context.lineTo(data.x, data.y);
+      context.stroke();
+    }
+
+    function handleRemoteDrawingStart(data: {
+      x: number;
+      y: number;
+      color: string;
+      brushSize: number;
+      isEraser: boolean;
+    }) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const context = canvas.getContext("2d");
+      if (!context) return;
+
+      context.beginPath();
+      context.globalCompositeOperation = data.isEraser
+        ? "destination-out"
+        : "source-over";
+      context.strokeStyle = data.color;
+      context.lineWidth = data.isEraser ? 20 : data.brushSize;
+      context.lineCap = "round";
+      context.lineJoin = "round";
+      context.moveTo(data.x, data.y);
+    }
+
+    socket.on("drawing-start", handleRemoteDrawingStart);
+
+    socket.on("drawing", handleRemoteDrawing);
+
+    // socket.on("undo", handleRemoteUndo);
+    // socket.on("redo", handleRemoteRedo);
+
+    return () => {
+      socket.off("drawing", handleRemoteDrawing);
+      socket.off("drawing-start", handleRemoteDrawingStart);
+      // socket.off("undo", handleRemoteUndo);
+      // socket.off("redo", handleRemoteRedo);
+    };
+  }, []);
+
+  function stopDrawing(event: React.MouseEvent<HTMLCanvasElement>) {
+    console.log("stopDrawing called by:", event.type);
+
+    isDrawingRef.current = false;
     setIsDrawing(false);
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const imageData = canvas.toDataURL("image/png");
-
     localStorage.setItem("gatherboard-drawing", imageData);
   }
 
@@ -125,6 +267,7 @@ function Whiteboard() {
     localStorage.setItem("gatherboard-drawing", canvas.toDataURL("image/png"));
 
     setHistory(previousHistory);
+    socket.emit("undo");
   }
 
   useEffect(() => {
@@ -162,6 +305,14 @@ function Whiteboard() {
     };
   }, [undo]);
 
+  useEffect(() => {
+    console.log("Whiteboard MOUNTED");
+
+    return () => {
+      console.log("Whiteboard UNMOUNTED");
+    };
+  }, []);
+
   function redo() {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -191,6 +342,7 @@ function Whiteboard() {
     localStorage.setItem("gatherboard-drawing", canvas.toDataURL("image/png"));
 
     setRedoHistory(updatedRedoHistory);
+    socket.emit("redo");
   }
 
   return (
