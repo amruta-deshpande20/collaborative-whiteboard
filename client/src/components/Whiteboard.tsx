@@ -12,6 +12,13 @@ function Whiteboard() {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = useRef(false);
+  const historyRef = useRef<ImageData[]>([]);
+  const redoHistoryRef = useRef<ImageData[]>([]);
+
+  useEffect(() => {
+    historyRef.current = history;
+    redoHistoryRef.current = redoHistory;
+  }, [history, redoHistory]);
 
   function getCanvasCoordinates(event: React.MouseEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current!;
@@ -94,7 +101,7 @@ function Whiteboard() {
 
   function handleRemoteUndo() {
     const canvas = canvasRef.current;
-    if (!canvas || history.length === 0) return;
+    if (!canvas || historyRef.current.length === 0) return;
 
     const context = canvas.getContext("2d");
     if (!context) return;
@@ -106,19 +113,21 @@ function Whiteboard() {
       canvas.height,
     );
 
-    setRedoHistory((previous) => [...previous, currentSnapshot]);
+    historyRef.current = [...historyRef.current, currentSnapshot];
+    setHistory(historyRef.current);
 
-    const updatedHistory = [...history];
+    const updatedHistory = [...historyRef.current];
     const previousSnapshot = updatedHistory.pop();
     if (!previousSnapshot) return;
 
     context.putImageData(previousSnapshot, 0, 0);
+    historyRef.current = updatedHistory;
     setHistory(updatedHistory);
   }
 
   function handleRemoteRedo() {
     const canvas = canvasRef.current;
-    if (!canvas || redoHistory.length === 0) return;
+    if (!canvas || redoHistoryRef.current.length === 0) return;
 
     const context = canvas.getContext("2d");
     if (!context) return;
@@ -130,13 +139,15 @@ function Whiteboard() {
       canvas.height,
     );
 
-    setHistory((previous) => [...previous, currentSnapshot]);
+    redoHistoryRef.current = [...redoHistoryRef.current, currentSnapshot];
+    setRedoHistory(redoHistoryRef.current);
 
-    const updatedRedoHistory = [...redoHistory];
+    const updatedRedoHistory = [...redoHistoryRef.current];
     const nextSnapshot = updatedRedoHistory.pop();
     if (!nextSnapshot) return;
 
     context.putImageData(nextSnapshot, 0, 0);
+    redoHistoryRef.current = updatedRedoHistory;
     setRedoHistory(updatedRedoHistory);
   }
 
@@ -167,6 +178,23 @@ function Whiteboard() {
       context.stroke();
     }
 
+    function handleCanvasUpdate(imageData: string) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const context = canvas.getContext("2d");
+      if (!context) return;
+
+      const image = new Image();
+
+      image.onload = () => {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      };
+
+      image.src = imageData;
+    }
+
     function handleRemoteDrawingStart(data: {
       x: number;
       y: number;
@@ -195,14 +223,16 @@ function Whiteboard() {
 
     socket.on("drawing", handleRemoteDrawing);
 
-    // socket.on("undo", handleRemoteUndo);
-    // socket.on("redo", handleRemoteRedo);
+    socket.on("undo", handleRemoteUndo);
+    socket.on("redo", handleRemoteRedo);
+    socket.on("canvas-update", handleCanvasUpdate);
 
     return () => {
       socket.off("drawing", handleRemoteDrawing);
       socket.off("drawing-start", handleRemoteDrawingStart);
-      // socket.off("undo", handleRemoteUndo);
-      // socket.off("redo", handleRemoteRedo);
+      socket.off("undo", handleRemoteUndo);
+      socket.off("redo", handleRemoteRedo);
+      socket.off("canvas-update", handleCanvasUpdate);
     };
   }, []);
 
@@ -233,6 +263,7 @@ function Whiteboard() {
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     localStorage.setItem("gatherboard-drawing", canvas.toDataURL("image/png"));
+    socket.emit("canvas-update", canvas.toDataURL("image/png"));
   }
 
   function undo() {
@@ -252,10 +283,8 @@ function Whiteboard() {
       canvas.height,
     );
 
-    setRedoHistory((previousRedoHistory) => [
-      ...previousRedoHistory,
-      currentSnapshot,
-    ]);
+    redoHistoryRef.current = [...redoHistoryRef.current, currentSnapshot];
+    setRedoHistory(redoHistoryRef.current);
 
     // Retrieve the previous canvas state
     const previousHistory = [...history];
@@ -266,13 +295,21 @@ function Whiteboard() {
     context.putImageData(previousSnapshot, 0, 0);
     localStorage.setItem("gatherboard-drawing", canvas.toDataURL("image/png"));
 
+    historyRef.current = previousHistory;
     setHistory(previousHistory);
-    socket.emit("undo");
+    socket.emit("canvas-update", canvas.toDataURL("image/png"));
   }
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    const isNewSession = !sessionStorage.getItem("gatherboard-session");
+
+    if (isNewSession) {
+      localStorage.removeItem("gatherboard-drawing");
+      sessionStorage.setItem("gatherboard-session", "active");
+    }
 
     const savedDrawing = localStorage.getItem("gatherboard-drawing");
     if (!savedDrawing) return;
@@ -330,7 +367,8 @@ function Whiteboard() {
       canvas.height,
     );
 
-    setHistory((previousHistory) => [...previousHistory, currentSnapshot]);
+    historyRef.current = [...historyRef.current, currentSnapshot];
+    setHistory(historyRef.current);
 
     // Retrieve the next canvas state
     const updatedRedoHistory = [...redoHistory];
@@ -341,8 +379,9 @@ function Whiteboard() {
     context.putImageData(nextSnapshot, 0, 0);
     localStorage.setItem("gatherboard-drawing", canvas.toDataURL("image/png"));
 
+    redoHistoryRef.current = updatedRedoHistory;
     setRedoHistory(updatedRedoHistory);
-    socket.emit("redo");
+    socket.emit("canvas-update", canvas.toDataURL("image/png"));
   }
 
   return (

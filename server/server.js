@@ -40,6 +40,10 @@ io.on("connection", (socket) => {
   socket.on("redo", () => {
     socket.broadcast.emit("redo");
   });
+
+  socket.on("canvas-update", (imageData) => {
+    socket.broadcast.emit("canvas-update", imageData);
+  });
 });
 
 server.listen(3001, () => {
