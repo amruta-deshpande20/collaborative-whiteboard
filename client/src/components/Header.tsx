@@ -9,11 +9,11 @@ function Header({ onGoHome }: HeaderProps) {
         <span className="brand-mark">*</span>
         <span>Gatherboard</span>
       </div>
-
+      {/* 
       <div className="board-info">
         <span className="board-title">Untitled Board</span>
         <span className="save-status">All changes saved</span>
-      </div>
+      </div> */}
 
       <div className="header-actions">
         <div className="collaborators">

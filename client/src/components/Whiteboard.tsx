@@ -7,8 +7,12 @@ function Whiteboard() {
   const [color, setColor] = useState("#000000");
   const [brushSize, setBrushSize] = useState(3);
   const [isEraser, setIsEraser] = useState(false);
+  const [boardName, setBoardName] = useState("My Whiteboard");
+  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [history, setHistory] = useState<ImageData[]>([]);
   const [redoHistory, setRedoHistory] = useState<ImageData[]>([]);
+  const [savedBoards, setSavedBoards] = useState<any[]>([]);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = useRef(false);
@@ -384,6 +388,78 @@ function Whiteboard() {
     socket.emit("canvas-update", canvas.toDataURL("image/png"));
   }
 
+  const saveBoard = async () => {
+    if (!boardName.trim()) {
+      alert("Please enter a board name.");
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    setIsSaving(true);
+
+    try {
+      const response = await fetch("http://localhost:3001/api/boards", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: boardName.trim(),
+          canvasData: canvas.toDataURL("image/png"),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save board");
+      }
+
+      alert("Board saved successfully!");
+    } catch (error) {
+      console.error("Error saving board:", error);
+      alert("Could not save the board. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const fetchSavedBoards = async () => {
+    try {
+      const response = await fetch("http://localhost:3001/api/boards");
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch boards");
+      }
+
+      const boards = await response.json();
+      setSavedBoards(boards);
+    } catch (error) {
+      console.error("Error fetching boards:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchSavedBoards();
+  }, []);
+
+  const loadBoard = (canvasData: string) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    const image = new Image();
+
+    image.onload = () => {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
+    };
+
+    image.src = canvasData;
+  };
+
   return (
     <main className="whiteboard-page">
       {" "}
@@ -399,6 +475,26 @@ function Whiteboard() {
         </div>{" "}
         <div className="board-status"> </div>{" "}
       </header>{" "}
+      {/* {savedBoards.length > 0 && (
+        <div className="saved-boards">
+          <h3>My Saved Boards</h3> */}
+      {/* {savedBoards.map((board) => (
+        <button
+          key={board._id}
+          className={`saved-board-item ${
+            selectedBoardId === board._id ? "selected" : ""
+          }`}
+          onClick={() => {
+            loadBoard(board.canvasData);
+            setBoardName(board.name);
+            setSelectedBoardId(board._id);
+          }}
+        >
+          {board.name}
+        </button>
+      ))}
+      {/* </div> */}
+      {/* )} */}
       <section className="board-workspace">
         {" "}
         <div className="toolbar">
@@ -469,43 +565,84 @@ function Whiteboard() {
             </select>{" "}
           </div>{" "}
         </div>{" "}
-        <div className="canvas-frame">
-          {" "}
-          <div className="canvas-topline">
-            <span>UNTITLED BOARD</span>
-            <span>800 × 500</span>
+        <div className="workspace-content">
+          <aside className="saved-boards-sidebar">
+            <h3>Saved Boards</h3>
 
-            <div className="canvas-actions">
-              <button className="action-button" onClick={undo} type="button">
-                ↶ Undo
-              </button>
+            {savedBoards.length === 0 ? (
+              <p>No saved boards yet.</p>
+            ) : (
+              savedBoards.map((board) => (
+                <button
+                  key={board._id}
+                  className={`saved-board-item ${
+                    selectedBoardId === board._id ? "selected" : ""
+                  }`}
+                  type="button"
+                  onClick={() => {
+                    loadBoard(board.canvasData);
+                    setBoardName(board.name);
+                    setSelectedBoardId(board._id);
+                  }}
+                >
+                  {board.name}
+                </button>
+              ))
+            )}
+          </aside>
 
-              <button className="action-button" onClick={redo} type="button">
-                ↷ Redo
-              </button>
+          <div className="canvas-area">
+            <div className="canvas-frame"></div>{" "}
+            <div className="canvas-topline">
+              <input
+                type="text"
+                value={boardName}
+                onChange={(event) => setBoardName(event.target.value)}
+                placeholder="Enter board name"
+                aria-label="Board name"
+              />
+              <span>800 × 500</span>
 
-              <button
-                className="clear-button"
-                onClick={clearCanvas}
-                type="button"
-              >
-                Clear Canvas
-              </button>
+              <div className="canvas-actions">
+                <button
+                  className="action-button"
+                  onClick={saveBoard}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save Board"}
+                </button>
+
+                <button className="action-button" onClick={undo} type="button">
+                  ↶ Undo
+                </button>
+
+                <button className="action-button" onClick={redo} type="button">
+                  ↷ Redo
+                </button>
+
+                <button
+                  className="clear-button"
+                  onClick={clearCanvas}
+                  type="button"
+                >
+                  Clear Canvas
+                </button>
+              </div>
             </div>
+            <canvas
+              width={800}
+              height={500}
+              className={
+                isEraser ? "drawing-canvas eraser-cursor" : "drawing-canvas"
+              }
+              ref={canvasRef}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+            />{" "}
           </div>
-          <canvas
-            width={800}
-            height={500}
-            className={
-              isEraser ? "drawing-canvas eraser-cursor" : "drawing-canvas"
-            }
-            ref={canvasRef}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-          />{" "}
-        </div>{" "}
+        </div>
         <p className="board-hint">
           {" "}
           <span>TIP</span> Select a tool, choose your brush size, and start

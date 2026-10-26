@@ -274,5 +274,114 @@ select:focus-visible {
   .canvas-frame {
     padding: 8px;
   }
+    .workspace-content {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .saved-boards-sidebar {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .canvas-area {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .canvas-frame canvas {
+    max-width: 100%;
+    height: auto;
+  }
 }
 
+.workspace-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  width: 100%;
+}
+
+.saved-boards-sidebar {
+  width: 220px;
+  min-width: 220px;
+  padding: 20px;
+  background: #f8f5ef;
+  border: 1px solid #e8e1d6;
+  border-radius: 12px;
+}
+
+.saved-boards-sidebar h3 {
+  margin: 0 0 16px;
+  font-size: 16px;
+}
+
+.saved-board-item {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  text-align: left;
+  font: inherit;
+  color: #292929;
+  background: #fffefa;
+  border: 1px solid #e8e1d6;
+  border-radius: 9px;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.saved-board-item:hover {
+  background: #f1ece3;
+  transform: translateY(-1px);
+}
+
+.saved-board-item.selected,
+.saved-board-item.selected:hover {
+  background: #e8e1d6;
+  border-color: #292929;
+  font-weight: 600;
+  box-shadow: 3px 3px 0 #292929;
+  transform: none;
+}
+
+.canvas-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.canvas-area .canvas-frame {
+  width: 100%;
+}
+
+.canvas-topline input[type="text"] {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #292929;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 8px 10px;
+  width: 180px;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.canvas-topline input[type="text"]:hover {
+  background: #f8f5ef;
+}
+
+.canvas-topline input[type="text"]:focus {
+  background: #fffefa;
+  border-color: #292929;
+}
+
+.canvas-topline input[type="text"]::placeholder {
+  color: #999187;
+  font-weight: 400;
+}
