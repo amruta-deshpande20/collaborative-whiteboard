@@ -385,3 +385,38 @@ select:focus-visible {
   color: #999187;
   font-weight: 400;
 }
+
+.new-blank-canvas-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid #ded8cc;
+  border-radius: 8px;
+  background-color: #f8f5ee;
+  color: #292820;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.new-blank-canvas-button:hover {
+  background-color: #eee8dc;
+  border-color: #bdb4a4;
+}
+
+.new-blank-canvas-button:active {
+  transform: scale(0.98);
+}
+
+.new-blank-canvas-button:focus-visible {
+  outline: 2px solid #292820;
+  outline-offset: 3px;
+}
+

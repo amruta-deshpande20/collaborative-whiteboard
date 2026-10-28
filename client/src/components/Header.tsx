@@ -1,34 +1,33 @@
+import { useState } from "react";
+
 type HeaderProps = {
   onGoHome: () => void;
+  onShare: () => void;
+  onLogout: () => void;
 };
 
-function Header({ onGoHome }: HeaderProps) {
+function Header({ onGoHome, onShare, onLogout }: HeaderProps) {
   return (
     <header className="app-header">
       <div className="brand">
         <span className="brand-mark">*</span>
         <span>Gatherboard</span>
       </div>
-      {/* 
-      <div className="board-info">
-        <span className="board-title">Untitled Board</span>
-        <span className="save-status">All changes saved</span>
-      </div> */}
 
       <div className="header-actions">
-        <div className="collaborators">
-          <span className="avatar">A</span>
-          <span className="avatar">S</span>
-        </div>
-
         <button className="home-button" onClick={onGoHome}>
-          {" "}
-          ← Home{" "}
+          ← Home
         </button>
 
-        <button className="share-button">Share</button>
+        <button className="share-button" onClick={onShare}>
+          Share
+        </button>
+        <button className="logout-button" onClick={onLogout}>
+          Log out
+        </button>
       </div>
     </header>
   );
 }
-export default Header; //reusable
+
+export default Header;

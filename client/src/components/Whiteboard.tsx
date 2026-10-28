@@ -2,7 +2,11 @@ import { useRef, useState, useEffect } from "react";
 import { socket } from "../socket";
 import "./Whiteboard.css";
 
-function Whiteboard() {
+type WhiteboardProps = {
+  onBoardSelect: (boardId: string | null) => void;
+  boardToOpen?: string | null;
+};
+function Whiteboard({ onBoardSelect, boardToOpen }: WhiteboardProps) {
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState("#000000");
   const [brushSize, setBrushSize] = useState(3);
@@ -18,6 +22,28 @@ function Whiteboard() {
   const isDrawingRef = useRef(false);
   const historyRef = useRef<ImageData[]>([]);
   const redoHistoryRef = useRef<ImageData[]>([]);
+
+  useEffect(() => {
+    if (!selectedBoardId) return;
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    const joinBoard = () => {
+      socket.emit("join-board", selectedBoardId);
+    };
+
+    if (socket.connected) {
+      joinBoard();
+    } else {
+      socket.once("connect", joinBoard);
+    }
+
+    return () => {
+      socket.off("connect", joinBoard);
+    };
+  }, [selectedBoardId]);
 
   useEffect(() => {
     historyRef.current = history;
@@ -58,6 +84,7 @@ function Whiteboard() {
     context.moveTo(x, y);
 
     socket.emit("drawing-start", {
+      boardId: selectedBoardId,
       x,
       y,
       color,
@@ -95,6 +122,7 @@ function Whiteboard() {
 
     context.stroke();
     socket.emit("drawing", {
+      boardId: selectedBoardId,
       x,
       y,
       color,
@@ -182,7 +210,9 @@ function Whiteboard() {
       context.stroke();
     }
 
-    function handleCanvasUpdate(imageData: string) {
+    function handleCanvasUpdate(data: { boardId: string; imageData: string }) {
+      if (data.boardId !== selectedBoardId) return;
+
       const canvas = canvasRef.current;
       if (!canvas) return;
 
@@ -196,7 +226,7 @@ function Whiteboard() {
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
       };
 
-      image.src = imageData;
+      image.src = data.imageData;
     }
 
     function handleRemoteDrawingStart(data: {
@@ -238,7 +268,7 @@ function Whiteboard() {
       socket.off("redo", handleRemoteRedo);
       socket.off("canvas-update", handleCanvasUpdate);
     };
-  }, []);
+  }, [selectedBoardId]);
 
   function stopDrawing(event: React.MouseEvent<HTMLCanvasElement>) {
     console.log("stopDrawing called by:", event.type);
@@ -267,7 +297,30 @@ function Whiteboard() {
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     localStorage.setItem("gatherboard-drawing", canvas.toDataURL("image/png"));
-    socket.emit("canvas-update", canvas.toDataURL("image/png"));
+    socket.emit("canvas-update", {
+      boardId: selectedBoardId,
+      imageData: canvas.toDataURL("image/png"),
+    });
+  }
+
+  function createNewCanvas() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    setSelectedBoardId(null);
+    onBoardSelect(null);
+    setBoardName("Untitled Board");
+    setHistory([]);
+    setRedoHistory([]);
+
+    localStorage.setItem("gatherboard-drawing", canvas.toDataURL("image/png"));
+
+    socket.emit("leave-board");
   }
 
   function undo() {
@@ -301,7 +354,10 @@ function Whiteboard() {
 
     historyRef.current = previousHistory;
     setHistory(previousHistory);
-    socket.emit("canvas-update", canvas.toDataURL("image/png"));
+    socket.emit("canvas-update", {
+      boardId: selectedBoardId,
+      imageData: canvas.toDataURL("image/png"),
+    });
   }
 
   useEffect(() => {
@@ -385,7 +441,10 @@ function Whiteboard() {
 
     redoHistoryRef.current = updatedRedoHistory;
     setRedoHistory(updatedRedoHistory);
-    socket.emit("canvas-update", canvas.toDataURL("image/png"));
+    socket.emit("canvas-update", {
+      boardId: selectedBoardId,
+      imageData: canvas.toDataURL("image/png"),
+    });
   }
 
   const saveBoard = async () => {
@@ -400,10 +459,13 @@ function Whiteboard() {
     setIsSaving(true);
 
     try {
+      const token = sessionStorage.getItem("gatherboard-token");
+
       const response = await fetch("http://localhost:3001/api/boards", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: boardName.trim(),
@@ -415,7 +477,11 @@ function Whiteboard() {
         throw new Error("Failed to save board");
       }
 
+      const data = await response.json();
+      setSelectedBoardId(data.boardId);
+      onBoardSelect(data.boardId);
       alert("Board saved successfully!");
+      await fetchSavedBoards();
     } catch (error) {
       console.error("Error saving board:", error);
       alert("Could not save the board. Please try again.");
@@ -426,7 +492,13 @@ function Whiteboard() {
 
   const fetchSavedBoards = async () => {
     try {
-      const response = await fetch("http://localhost:3001/api/boards");
+      const token = sessionStorage.getItem("gatherboard-token");
+
+      const response = await fetch("http://localhost:3001/api/boards", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch boards");
@@ -439,9 +511,43 @@ function Whiteboard() {
     }
   };
 
+  const openBoardById = async (boardId: string) => {
+    try {
+      const token = sessionStorage.getItem("gatherboard-token");
+
+      const response = await fetch(
+        `http://localhost:3001/api/boards/${boardId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Unable to open this shared board.");
+      }
+
+      const board = await response.json();
+
+      loadBoard(board.canvasData);
+      setBoardName(board.name);
+      setSelectedBoardId(board._id);
+      onBoardSelect(board._id);
+    } catch (error) {
+      console.error("Error opening board:", error);
+      alert("Could not open this board. Please check your access.");
+    }
+  };
+
   useEffect(() => {
     fetchSavedBoards();
-  }, []);
+
+    if (boardToOpen) {
+      openBoardById(boardToOpen);
+      sessionStorage.removeItem("gatherboard-open-board");
+    }
+  }, [boardToOpen]);
 
   const loadBoard = (canvasData: string) => {
     const canvas = canvasRef.current;
@@ -583,6 +689,7 @@ function Whiteboard() {
                     loadBoard(board.canvasData);
                     setBoardName(board.name);
                     setSelectedBoardId(board._id);
+                    onBoardSelect(board._id);
                   }}
                 >
                   {board.name}
@@ -626,6 +733,13 @@ function Whiteboard() {
                   type="button"
                 >
                   Clear Canvas
+                </button>
+                <button
+                  type="button"
+                  className="new-blank-canvas-button"
+                  onClick={createNewCanvas}
+                >
+                  + New Blank Canvas
                 </button>
               </div>
             </div>

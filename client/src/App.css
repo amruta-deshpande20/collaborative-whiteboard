@@ -260,3 +260,91 @@
   outline: 2px solid #6366f1;
   outline-offset: 2px;
 }
+
+.share-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.share-modal {
+  position: relative;
+  width: min(420px, 90%);
+  padding: 28px;
+  border-radius: 16px;
+  background: #fffaf0;
+  color: #242424;
+}
+
+.share-modal h2 {
+  margin-top: 0;
+}
+
+.share-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.share-modal label {
+  display: block;
+  margin: 18px 0 6px;
+  font-weight: 600;
+}
+
+.share-copy-row {
+  display: flex;
+  gap: 8px;
+}
+
+.share-copy-row input {
+  min-width: 0;
+  flex: 1;
+  padding: 9px;
+}
+
+.share-copy-row button {
+  padding: 9px 12px;
+  cursor: pointer;
+}
+
+.share-error {
+  color: #b42318;
+}
+
+.logout-button {
+  padding: 8px 16px;
+  border: 1px solid #ded8cc;
+  border-radius: 8px;
+  background-color: #f8f5ee;
+  color: #292820;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease,
+              border-color 0.2s ease,
+              transform 0.2s ease;
+}
+
+.logout-button:hover {
+  background-color: #eee8dc;
+  border-color: #bdb4a4;
+}
+
+.logout-button:active {
+  transform: scale(0.98);
+}
+
+.logout-button:focus-visible {
+  outline: 2px solid #292820;
+  outline-offset: 3px;
+}
