@@ -7,6 +7,7 @@ import Auth from "./pages/Auth";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import JoinBoard from "./pages/JoinBoard";
+import { API_URL } from "./config";
 
 type User = {
   name: string;
@@ -130,7 +131,7 @@ function AppContent() {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/api/boards/${selectedBoardId}/invite`,
+        `${API_URL}/api/boards/${selectedBoardId}/invite`,
         {
           method: "POST",
           headers: {

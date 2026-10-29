@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./Auth.css";
+import { API_URL } from "../config";
 
 type AuthProps = {
   onLogin: (token: string, user: { name: string; email: string }) => void;
@@ -20,7 +21,7 @@ function Auth({ onLogin }: AuthProps) {
 
     try {
       const response = await fetch(
-        "http://localhost:3001/api/auth/" + (isRegister ? "register" : "login"),
+        `${API_URL}/api/auth/${isRegister ? "register" : "login"}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

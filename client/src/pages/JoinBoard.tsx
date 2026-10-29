@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { API_URL } from "../config";
 
 function JoinBoard() {
   const { token: inviteToken } = useParams();
@@ -18,7 +19,7 @@ function JoinBoard() {
 
       try {
         const response = await fetch(
-          `http://localhost:3001/api/boards/join/${inviteToken}`,
+          `${API_URL}/api/boards/join/${inviteToken}`,
           {
             method: "POST",
             headers: {

@@ -13,14 +13,23 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 
 const app = express();
-app.use(cors());
+const allowedOrigins = ["http://localhost:5173", process.env.CLIENT_URL].filter(
+  Boolean,
+);
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+  }),
+);
+
 app.use(express.json());
 
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
 });
@@ -308,8 +317,10 @@ async function startServer() {
 
     console.log("Connected to MongoDB Atlas!");
 
-    server.listen(3001, () => {
-      console.log("Server running on http://localhost:3001");
+    const PORT = process.env.PORT || 3001;
+
+    server.listen(PORT, () => {
+      console.log(`Gatherboard server running on port ${PORT}`);
     });
   } catch (error) {
     console.error("MongoDB connection failed:", error.message);

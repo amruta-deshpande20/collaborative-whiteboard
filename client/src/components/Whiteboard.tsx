@@ -1,13 +1,14 @@
 import { useRef, useState, useEffect } from "react";
 import { socket } from "../socket";
 import "./Whiteboard.css";
+import { API_URL } from "../config";
 
 type WhiteboardProps = {
   onBoardSelect: (boardId: string | null) => void;
   boardToOpen?: string | null;
 };
 function Whiteboard({ onBoardSelect, boardToOpen }: WhiteboardProps) {
-  const [isDrawing, setIsDrawing] = useState(false);
+  const [, setIsDrawing] = useState(false);
   const [color, setColor] = useState("#000000");
   const [brushSize, setBrushSize] = useState(3);
   const [isEraser, setIsEraser] = useState(false);
@@ -461,7 +462,7 @@ function Whiteboard({ onBoardSelect, boardToOpen }: WhiteboardProps) {
     try {
       const token = sessionStorage.getItem("gatherboard-token");
 
-      const response = await fetch("http://localhost:3001/api/boards", {
+      const response = await fetch(`${API_URL}/api/boards`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -494,7 +495,7 @@ function Whiteboard({ onBoardSelect, boardToOpen }: WhiteboardProps) {
     try {
       const token = sessionStorage.getItem("gatherboard-token");
 
-      const response = await fetch("http://localhost:3001/api/boards", {
+      const response = await fetch(`${API_URL}/api/boards`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -515,14 +516,11 @@ function Whiteboard({ onBoardSelect, boardToOpen }: WhiteboardProps) {
     try {
       const token = sessionStorage.getItem("gatherboard-token");
 
-      const response = await fetch(
-        `http://localhost:3001/api/boards/${boardId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const response = await fetch(`${API_URL}/api/boards/${boardId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
       if (!response.ok) {
         throw new Error("Unable to open this shared board.");
